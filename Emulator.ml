@@ -54,32 +54,32 @@ module Simulator =
     let rec (execute_action_using: simulators * loggers -> (State.t * Action.t * State.t) -> Configuration.t -> Configuration.t) = fun (simulators,loggers) (src,action,tgt) cfg ->
 	  let cfg = cfg >> (Configuration.show_using loggers)
 	  in
-	    let next_bands =
-	      match simulators with
-	      | [] -> Action.perform action cfg.bands
+    let next_bands =
+      match simulators with
+      | [] -> Action.perform action cfg.bands
 
-	      | simulator :: other_simulators
-		->
-		      let e_tm    = simulator.emulator (src,action,tgt)
-		      and e_bands = (simulator.encoder  cfg.bands) >> (show_bands_using loggers (String.concat " to " [ "encoding" ; simulator.name ]))
-		      in let e_cfg = Configuration.make e_tm e_bands
-		      in
-			let e_next_cfg = log_run_using (other_simulators,loggers) e_cfg
-			in
+      | simulator :: other_simulators
+        ->
+        let e_tm    = simulator.emulator (src,action,tgt)
+        and e_bands = (simulator.encoder  cfg.bands) >> (show_bands_using loggers (String.concat " to " [ "encoding" ; simulator.name ]))
+        in let e_cfg = Configuration.make e_tm e_bands
+        in
+        let e_next_cfg = log_run_using (other_simulators,loggers) e_cfg
+        in
 			  let bands_updated_by_emulation = (simulator.decoder e_next_cfg.bands) >> (show_bands_using loggers (String.concat " " [ simulator.name ; "decoding"]))
 			  in
-			    let bands_updated_by_execution = Action.perform action cfg.bands
-			    in
-			      if (* FIXME: Band.are_equivalents *) bands_updated_by_execution = bands_updated_by_emulation
-			      then bands_updated_by_execution
-			      else failwith
+        let bands_updated_by_execution = Action.perform action cfg.bands
+        in
+        if (* FIXME: Band.are_equivalents *) bands_updated_by_execution = bands_updated_by_emulation
+			  then bands_updated_by_execution
+			  else failwith
 				  (String.concat " \n " [ "execute_action_using: simulation errors" ;
 							Band.to_ascii_many bands_updated_by_emulation ;
 							"are not equivalent to" ;
 							Band.to_ascii_many bands_updated_by_execution ;
 						      ])
 	    in
-	      { cfg with bands = next_bands }
+      { cfg with bands = next_bands }
 
 
     and (execute_single_band_instruction_using: simulators * loggers -> (State.t * Instruction.t * State.t) -> Band.t -> Band.t) = fun (simulators,loggers) (src,instruction,tgt) band ->
@@ -224,47 +224,29 @@ module Binary =
   (struct
 
     (* TRANSLATION OF BANDS *)
-    let rec find x lst =
-        match lst with
-        | [] -> raise (Failure "Not Found")
-        | h :: t -> if x = h then 0 else 1 + find x t
+    (* The modules Bit and Bits are defined in Alphabet.ml *)
 
-    let (d2b_helper : int -> Symbol.t list) = fun x -> match x with
-    | 0 -> [B]
-    | 1 -> [D]
+    type encoding = (Symbol.t * Bits.t) list
 
-    let rec d2b x y tab =
-    let () = Printf.printf "x=%d y=%d \n" x y in
-    let () = List.iter (fun e -> Printf.printf "%s " (Symbol.to_ascii e)) tab in
-    let () = Printf.printf "\n\n" in
-    match x with 0 ->
-    if (List.length tab = y) then tab else (d2b 0 y (tab@[B]))
-    | _ -> d2b (x/2) y (tab@(d2b_helper (x mod 2)))
+    let (encode_on_one_band: encoding -> Band.t -> Band.t) = fun encoding band ->
+      let rec foldi i f acc =
+          if i <= 0 then acc else foldi (pred i) f (f acc) in
+      let get_Tuple_From_Symbol encoding symbol =
+          List.find (fun (s, _) -> s = symbol) encoding in
+      let second_Element_Tuple (a,b) = b in
+      let rec write_Encoded_Symbol_List band lst =
+          match lst with
+          | [] -> band
+          | h :: t -> write_Encoded_Symbol_List (Band.move_head_right (Band.write h band)) t in
+      let rec write_Non_Encoded_Symbol_List encoding band lst =
+          match lst with
+          | [] -> band
+          | head :: tail -> write_Non_Encoded_Symbol_List encoding (write_Encoded_Symbol_List band (second_Element_Tuple (get_Tuple_From_Symbol encoding head))) tail in
 
-    let (construct_new_symbols : Alphabet.t -> Symbol.t list list) = fun alphabet ->
-        let () = Printf.printf "\nalphabet.symbol_size_in_bits = %d\n%!" alphabet.symbol_size_in_bits in
-        let () = Printf.printf "\nAlphabet :\n" in
-        let () = List.iter (fun e -> Printf.printf "%s " (Symbol.to_ascii e)) alphabet.symbols in
-        let () = Printf.printf "\n\n" in
-        List.mapi(fun i oldSymbol -> d2b i alphabet.symbol_size_in_bits []) alphabet.symbols
-
-    let rec write_Encoded_Symbol_List band lst = match lst with
-    | [] -> band
-    | h :: t -> write_Encoded_Symbol_List (Band.move_head_right (Band.write h band)) t
-
-    let rec write_Non_Encoded_Symbol_List band newSymbols oldSymbol lst = match lst with
-    | [] -> band
-    | h :: t -> write_Non_Encoded_Symbol_List (write_Encoded_Symbol_List band (List.nth newSymbols (find h oldSymbol))) newSymbols oldSymbol t
-
-    let rec foldi i f acc =
-        if i <= 0 then acc else foldi (pred i) f (f acc)
-
-    let (encode_on_one_band: Band.t -> Band.t) = fun band ->
       let alphabet = Alphabet.binary in
       let bandBinary = Band.make alphabet [] in
-      let newSymbols = (construct_new_symbols band.alphabet) in
-      let bandBinary = write_Encoded_Symbol_List bandBinary (List.nth newSymbols (find band.head band.alphabet.symbols)) in
-      let bandBinary = write_Non_Encoded_Symbol_List bandBinary newSymbols band.alphabet.symbols band.right in
+      let bandBinary = write_Encoded_Symbol_List bandBinary (second_Element_Tuple (get_Tuple_From_Symbol encoding band.head)) in
+      let bandBinary = write_Non_Encoded_Symbol_List encoding bandBinary band.right in
 
       let () = Printf.printf "\nHEAD AND RIGHT\n" in
       let () = List.iter (fun e -> Printf.printf "%s " (Symbol.to_ascii e)) (List.rev bandBinary.left) in
@@ -273,7 +255,7 @@ module Binary =
 
       let () = Printf.printf "\nFolding AND LEFT \n" in
       let bandBinary = foldi ((((List.length band.right + List.length band.left) + 1) * band.alphabet.symbol_size_in_bits)) Band.move_head_left bandBinary in
-      let bandBinary = write_Non_Encoded_Symbol_List bandBinary newSymbols band.alphabet.symbols (List.rev band.left) in
+      let bandBinary = write_Non_Encoded_Symbol_List encoding bandBinary (List.rev band.left) in
       let () = List.iter (fun e -> Printf.printf "%s " (Symbol.to_ascii e)) (List.rev bandBinary.left) in
       let () = Printf.printf "'%s' " (Symbol.to_ascii bandBinary.head) in
       let () = List.iter (fun e -> Printf.printf "%s " (Symbol.to_ascii e)) bandBinary.right in
@@ -281,14 +263,28 @@ module Binary =
       bandBinary
 
 
-    let (encode: Band.t list -> Band.t list) = (fun bands ->
-	(* PROJET 2017: modifiez ce code -> *)
-        List.map(fun band -> encode_on_one_band band) bands)
+    let build_encoding : Alphabet.t -> encoding = fun alphabet ->
+        let (d2b1_helper : int -> Symbol.t list) = fun x ->
+          match x with
+          | 0 -> [Bit.zero]
+          | 1 -> [Bit.unit] in
+        let rec d2b1 x y tab =
+          match x with 0 ->
+          if (List.length tab = y) then tab else (d2b1 0 y (tab@[Bit.zero]))
+          | _ -> d2b1 (x/2) y (tab@(d2b1_helper (x mod 2))) in
+        let symbol_to_bits : int -> int -> Bits.t
+          = fun index size -> d2b1 index size []
+        in
+        List.mapi (fun index symbol -> (symbol, symbol_to_bits index alphabet.symbol_size_in_bits)) alphabet.symbols
+
+    let encode_with : encoding -> Band.t list -> Band.t list = fun encoding bands ->
+        List.map(fun band -> encode_on_one_band encoding band) bands
 
     (* REVERSE TRANSLATION *)
 
-    let (decode: Band.t list -> Band.t list) =
-	(* PROJET 2017: modifiez ce code -> *) (fun x -> x)
+    let decode_with : encoding -> Band.t list -> Band.t list
+      = fun encoding ->
+        (fun bands -> bands)
 
 
     (* EMULATION OF TRANSITIONS *)
@@ -305,9 +301,14 @@ module Binary =
 
 
     (* THE SIMULATOR *)
-
-    let (* USER *) (simulator: simulator) = { name = "Binary" ; encoder = encode ;  decoder = decode ; emulator = emulate_action }
-
+    let make_simulator : Alphabet.t -> simulator
+      = fun alphabet ->
+        let encoding = build_encoding alphabet in
+        { name = "Binary" ;
+          encoder = encode_with encoding ;
+          decoder = decode_with encoding ;
+          emulator = emulate_action
+        }
   end)
 
 
@@ -321,5 +322,5 @@ let (demo: unit -> unit) = fun () ->
 	let band = Band.make alphabet [U;U;Z;U] in
 	  let tm = Turing_Machine.incr in
 	    let cfg = Configuration.make tm [ band ] in
-	      let _final_cfg = Simulator.log_run_using ([ (* Split.simulator ; *) Binary.simulator ],[]) cfg
+	      let _final_cfg = Simulator.log_run_using ([ (* Split.simulator ; *) Binary.make_simulator alphabet ],[]) cfg
 		  in ()
