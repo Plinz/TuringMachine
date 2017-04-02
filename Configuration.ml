@@ -1,4 +1,4 @@
-(* Michaël PÉRIN, Verimag / Université Grenoble-Alpes, Février 2017 
+(* Michaï¿½l Pï¿½RIN, Verimag / Universitï¿½ Grenoble-Alpes, Fï¿½vrier 2017
  *
  * Part of the project: TURING MACHINES FOR REAL
  *
@@ -14,20 +14,20 @@ open State
 open Action
 open Transition
 open Turing_Machine
-  
-  
+
+
 type status = Running | Final
-  
+
 type configuration = { tm: Turing_Machine.t ;
 		       bands: Band.t list ;
 		       state: State.t ;
-		       status: status ; 
+		       status: status ;
 		       logger: Logger.t ;
 		     }
-      
+
 type configurations = configuration list
 
-      
+
 module Configuration =
   (struct
 
@@ -39,7 +39,7 @@ module Configuration =
 
     let make ?time:(time=false) : (Turing_Machine.t -> Band.t list -> configuration) = fun tm bands ->
 	  let
-	      filename = if time then begin Date.sleep_for 0.1 ; String.concat "_" [ Date.pretty_time() ; name tm bands ] end else name tm bands 
+	      filename = (*if time then begin Date.sleep_for 0.1 ; String.concat "_" [ Date.pretty_time() ; name tm bands ] end else*) name tm bands 
 	  in
 	  { tm = tm ;
 	    bands = bands ;
@@ -52,12 +52,12 @@ module Configuration =
 	  (cfg.state = source)
 	    &&
 	  (Instruction.is_enabled_on cfg.bands instruction)
-	    
-	    
+
+
     (* PRETTY PRINTING *)
-	  
+
     (* ascii *)
-		    
+
     let (to_ascii: configuration -> string) = fun cfg ->
 	  cfg.bands >> (List.map Band.to_ascii) >> (String.concat "\n")
 
@@ -65,7 +65,7 @@ module Configuration =
 
     let (to_html: Html.options -> configuration -> Html.table) = fun options cfg ->
 	  let tm_name = Html.cell [] cfg.tm.name
-	      
+
 	  and bands = Html.cell [] (Band.to_html_many options cfg.bands)
 
 	  and state =
@@ -78,7 +78,7 @@ module Configuration =
 	    Html.table
 	      (options @ [ ("bordercolor", Html.Color Color.gray) ; ("cellpadding",Html.Int 0) ; ("cellspacing",Html.Int 0) ; ("border",Html.Int 1) ])
 	      [ tm_name ; state ; bands ]
-	      
+
     (* user *)
 
     let (pretty: t -> string) = fun t ->
@@ -89,30 +89,30 @@ module Configuration =
 (*    let (print: t -> unit) = fun cfg ->
 	  cfg.logger#print (pretty cfg)
  *)
-		    
+
     let (do_times: int -> ('t -> unit) -> 't list -> unit) = fun n f ts ->
 	  List.iteri (fun i t -> if i<n then f t else ()) ts
-	  
+
     let print_using ?n_first:(n_first=(-1)) : (Logger.t list -> t -> unit) = fun loggers cfg ->
 	  let log_cfg = fun logger -> logger#print (pretty cfg) in
 	    if n_first<0
 	    then List.iter log_cfg loggers
-	    else do_times n_first log_cfg loggers 
+	    else do_times n_first log_cfg loggers
 
     let show_using ?n_first:(n_first=(-1)) : (Logger.t list -> t -> t) = fun loggers cfg ->
 	  begin
 	    print_using ~n_first:n_first loggers cfg ;
 	    cfg
 	  end
-	      
-  end)      
+
+  end)
 
 
-(* DEMO *)		
+(* DEMO *)
 
 open Alphabet
 open Symbol
-  
+
 let (demo: unit -> unit) = fun () ->
       let alphabet = Alphabet.make [B;Z;U;D] in
 	let band1 = Band.make alphabet [B;D;Z;U;U;Z;B]
@@ -121,8 +121,5 @@ let (demo: unit -> unit) = fun () ->
 	    begin
 	      print_string (Configuration.to_ascii cfg) ;
 	      cfg.logger#print (Configuration.to_html [] cfg) ;
-	      cfg.logger#close 
+	      cfg.logger#close
 	    end
-	      
-    
-
