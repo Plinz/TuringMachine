@@ -231,6 +231,10 @@ module Binary =
 
     let rec foldi i f acc =
         if i <= 0 then acc else foldi (pred i) f (f acc)
+    let get_Bits_From_Symbol encoding symbol =
+        (fun (a,b) -> b) (List.find (fun (s, _) -> s = symbol) encoding)
+    let get_Symbol_From_Bits encoding bits =
+        (fun (a,b) -> a) (List.find (fun (_, b) -> b = bits) encoding)
 
     let build_encoding : Alphabet.t -> encoding = fun alphabet ->
         let (d2b_helper : int -> Symbol.t list) = fun x ->
@@ -244,9 +248,7 @@ module Binary =
         List.mapi (fun index symbol -> (symbol, d2b index alphabet.symbol_size_in_bits [])) alphabet.symbols
 
     let (encode_on_one_band: encoding -> Band.t -> Band.t) = fun encoding band ->
-      let get_Second encoding symbol =
-          List.find (fun (s, _) -> s = symbol) encoding in
-      let second_Element_Tuple (a,b) = b in
+
       let rec write_Encoded_Symbol_List band lst =
           match lst with
           | [] -> band
@@ -254,11 +256,11 @@ module Binary =
       let rec write_Non_Encoded_Symbol_List encoding band lst =
           match lst with
           | [] -> band
-          | head :: tail -> write_Non_Encoded_Symbol_List encoding (write_Encoded_Symbol_List band (second_Element_Tuple (get_Second encoding head))) tail in
+          | head :: tail -> write_Non_Encoded_Symbol_List encoding (write_Encoded_Symbol_List band (get_Bits_From_Symbol encoding head)) tail in
 
       let alphabet = Alphabet.binary in
       let bandBinary = Band.make alphabet [] in
-      let bandBinary = write_Encoded_Symbol_List bandBinary (second_Element_Tuple (get_Second encoding band.head)) in
+      let bandBinary = write_Encoded_Symbol_List bandBinary (get_Bits_From_Symbol encoding band.head) in
       let bandBinary = write_Non_Encoded_Symbol_List encoding bandBinary band.right in
       let bandBinary = foldi ((((List.length band.right + List.length band.left) + 1) * band.alphabet.symbol_size_in_bits)) Band.move_head_left bandBinary in
       let bandBinary = write_Non_Encoded_Symbol_List encoding bandBinary (List.rev band.left) in
@@ -272,18 +274,18 @@ module Binary =
 
     let (decode_on_one_band: encoding -> Band.t -> Band.t) = fun encoding bandBinary ->
 
-        let get_First (a,b) = a in
         let rec get_List_First_Element_Tuple_List lst newList =
             match lst with
             | [] -> newList
-            | h :: t -> get_List_First_Element_Tuple_List t (get_First(h)::newList) in
+            | h :: t -> get_List_First_Element_Tuple_List t (((fun (a,b) -> a) h)::newList) in
         let alphabet = Alphabet.make (get_List_First_Element_Tuple_List encoding []) in
         let bandDecode = Band.make alphabet [] in
         let get_Next_Symbol band encoding =
             let rec get_Bits band i size tab =
                 if (i = size) then tab else get_Bits (Band.move_head_right band) (i+1) size (tab@[band.head]) in
             let bits = get_Bits band 0 alphabet.symbol_size_in_bits [] in
-                get_First (List.find (fun (_, b) -> b = bits) encoding) in
+                get_Symbol_From_Bits encoding bits
+        in
 
         let rec move_Beginning band =
             match band.left with
@@ -312,15 +314,102 @@ module Binary =
 
     (* EMULATION OF TRANSITIONS *)
 
-    let (emulate_action: State.t * Action.t * State.t -> Turing_Machine.t) = fun (source,action,target) ->
+    let (just_move: encoding -> moving -> Instruction.t list) = fun encoding moving ->
+        let instruction = [] in
+            List.map(fun null -> Action( RWM (Match(ANY), No_Write, moving))) ((fun (a,b) -> b) (List.hd encoding))
 
-      (* PROJET 2017: modifiez ce code -> *)
-	  { Turing_Machine.nop with
-	    name = String.concat "" [ "Binary" ; Pretty.parentheses (Action.to_ascii action) ] ;
-	    initial = State.initial ;
-	    accept  = State.accept ;
-	    transitions = [(State.initial,Action(action),State.accept)]
-	  }
+    let (just_read_symbol : encoding -> State.t -> State.t -> Symbol.t -> (Transition.t list * State.t * State.t)) = fun encoding state_Start state_End symbol ->
+        let bits = get_Bits_From_Symbol encoding symbol in
+
+        let rec read_Bits bits_To_Read stateKO stateOK =
+            match bits_To_Read with
+            | [] -> ([],stateOK,stateKO)
+            | h::t ->
+                let nextstateOK = State.next_from stateKO in
+                let nextstateKO = State.next_from nextstateOK in
+                let newTransitions =
+                    [(stateOK,  Action( RWM(Match(VAL h), No_Write, Right)), nextstateOK);
+                    (stateOK,  Action( RWM(Match(BUT h), No_Write, Right)), nextstateKO);
+                    (nextstateKO,  Action( RWM(Match(ANY), No_Write, Left)), stateKO)]
+                in
+                let next_rec = read_Bits t stateKO stateOK in
+                (newTransitions@((fun (a,b,c) -> a) next_rec),((fun (a,b,c) -> b) next_rec),((fun (a,b,c) -> c) next_rec))
+
+        in
+        read_Bits bits state_Start state_End
+
+    let (just_write_symbol : encoding -> Symbol.t -> Instruction.t list) = fun encoding symbol ->
+        let bits = get_Bits_From_Symbol encoding symbol in
+        let rec write_Bits bits_To_Write =
+            match bits_To_Write with
+            | [] -> []
+            | h::t -> Action( RWM(Match(ANY), Write h, Right))::(write_Bits t)
+        in
+        (just_move encoding Left)@(write_Bits bits)
+
+    let (simple_action : encoding -> State.t -> reading -> writing -> moving -> Transition.t list) = fun encoding state_Start reading writing moving ->
+        let symbols_Reading =
+            match reading with
+            | Match pattern -> Pattern.symbols_of pattern
+            | _ -> []
+        in
+        let get_Instructions_Writing encoding writing =
+            match writing with
+            | No_Write     -> [Action(Nop)]
+            | Write symbol -> just_write_symbol encoding symbol
+        in
+        let get_Instructions_Moving encoding moving =
+            match moving with
+            | Left -> (just_move encoding Left)@(just_move encoding Left)
+            | Here -> (just_move encoding Left)
+            | Right -> []
+        in
+        let rec read symbols encoding state_Start state_End =
+            match symbols with
+            | [] -> ([],state_Start,state_End)
+            | h::t ->
+                let readed = just_read_symbol encoding state_Start state_End h in
+                let next_rec = read t encoding ((fun (a,b,c) -> b) readed) ((fun (a,b,c) -> c) readed) in
+                (((fun (a,b,c) -> a) readed)@((fun (a,b,c) -> a) next_rec),((fun (a,b,c) -> b) next_rec),((fun (a,b,c) -> c) next_rec))
+        in
+        let read_Transitions = read symbols_Reading encoding state_Start State.reject in
+        let write_Instructions = get_Instructions_Writing encoding writing in
+        let move_Instructions = get_Instructions_Moving encoding moving in
+        ((fun (a,b,c) -> a) read_Transitions)@[(((fun (a,b,c) -> b) read_Transitions), Seq(write_Instructions@move_Instructions), State.accept)]
+
+    let rec (transitions_emulating: encoding -> State.t * Action.t * State.t -> Transition.t list) = fun encoding (source,action,target) ->
+        let () = Printf.printf "\nGET STRING STATE SOURCE :\n%s\n" (State.to_ascii source) in
+        let () = Printf.printf "\nGET STRING ACTION :\n%s\n" (Action.to_ascii action) in
+        let () = Printf.printf "\nGET STRING STATE TARGET :\n%s\n" (State.to_ascii target) in
+
+	    (match action with
+	    | Nop -> [ (source, Action(Nop), target) ]
+
+	    | RWM(r,w,m) -> simple_action encoding source r w m
+
+	    | Simultaneous actions -> [ (source, Action(Nop), target) ]
+	    )
+
+
+    let (emulate_action: encoding -> State.t * Action.t * State.t -> Turing_Machine.t) = fun encoding (source,action,target) ->
+
+      let transitions =  transitions_emulating encoding (source,action,target) in
+
+      let (source,target) =
+        if source <> target   (* /!\ loop in the emulated TM if source-target *)
+        then (source,target)
+        else (State.initial, State.accept)
+      in
+      let transitions =  transitions_emulating encoding (source,action,target) in
+      let () = Printf.printf "\nPRINT TRANSITIONS : :\n" in
+      let () = List.iter(fun transition -> Printf.printf "\n%s\n" (Transition.to_ascii transition)) transitions in
+
+    	  { Turing_Machine.nop with
+    	    name = String.concat "" [ "Binary" ; Pretty.parentheses (Action.to_ascii action) ] ;
+    	    initial = source ;
+    	    accept  = target ;
+    	    transitions = transitions
+    	  }
 
 
     (* THE SIMULATOR *)
@@ -330,7 +419,7 @@ module Binary =
         { name = "Binary" ;
           encoder = encode_with encoding ;
           decoder = decode_with encoding ;
-          emulator = emulate_action
+          emulator = emulate_action encoding;
         }
   end
 
