@@ -71,7 +71,14 @@ module Simulator =
 	    in
         let bands_updated_by_execution = Action.perform action cfg.bands
         in
-        if (* FIXME: Band.are_equivalents *) bands_updated_by_execution = bands_updated_by_emulation
+        let equivalent = List.map2(fun bandExecution bandEmulation -> Band.equivalent bandExecution bandEmulation) bands_updated_by_execution bands_updated_by_emulation
+        in
+        let rec allTrue = fun bool_List ->
+            match bool_List with
+            | [] -> true
+            | h::t -> if h then allTrue t else h
+        in
+        if allTrue equivalent
 			  then bands_updated_by_execution
 			  else failwith
 				  (String.concat " \n " [ "execute_action_using: simulation errors" ;
@@ -321,18 +328,18 @@ module Binary =
     let (just_read_symbol : encoding -> State.t -> State.t -> Symbol.t -> (Transition.t list * State.t * State.t)) = fun encoding state_Start state_End symbol ->
         let bits = get_Bits_From_Symbol encoding symbol in
 
-        let rec read_Bits bits_To_Read stateKO stateOK =
+        let rec read_Bits bits_To_Read stateOK stateKO =
             match bits_To_Read with
             | [] -> ([],stateOK,stateKO)
             | h::t ->
-                let nextstateOK = State.next_from stateKO in
-                let nextstateKO = State.next_from nextstateOK in
+                let nextstateKO = State.next_from stateOK in
+                let nextstateOK = State.next_from nextstateKO in
                 let newTransitions =
                     [(stateOK,  Action( RWM(Match(VAL h), No_Write, Right)), nextstateOK);
                     (stateOK,  Action( RWM(Match(BUT h), No_Write, Right)), nextstateKO);
                     (nextstateKO,  Action( RWM(Match(ANY), No_Write, Left)), stateKO)]
                 in
-                let next_rec = read_Bits t stateKO stateOK in
+                let next_rec = read_Bits t nextstateOK nextstateKO in
                 (newTransitions@((fun (a,b,c) -> a) next_rec),((fun (a,b,c) -> b) next_rec),((fun (a,b,c) -> c) next_rec))
 
         in
@@ -432,8 +439,7 @@ let (demo: unit -> unit) = fun () ->
       print_string "\n\n* DEMO * Emulator.ml:\n" ;
       let alphabet = Alphabet.make [B;Z;U] in
 	let band = Band.make alphabet [U;U;Z;U] in
-    let band2 = Band.move_head_right band in
 	  let tm = Turing_Machine.incr in
-	    let cfg = Configuration.make tm [ band2 ] in
+	    let cfg = Configuration.make tm [ band ] in
 	      let _final_cfg = Simulator.log_run_using ([ (* Split.simulator ; *) Binary.make_simulator alphabet ],[]) cfg
 		  in ()

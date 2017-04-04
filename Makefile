@@ -1,4 +1,4 @@
-# Michaël PÉRIN, Verimag / Université Grenoble-Alpes, Février 2017 
+# Michaël PÉRIN, Verimag / Université Grenoble-Alpes, Février 2017
 #
 # Part of the project TURING MACHINES FOR REAL
 #
@@ -6,7 +6,7 @@
 SOL =
 #
 
-MODULES = Fresh Lambda_Calcul Option Tricks MyList MyString Pretty Bit_Vector Date Logger Color Html Pattern Symbol State Alphabet Band Action Transition Turing_Machine Configuration Execution LC_by_MT Demo Emulator $(SOL)
+MODULES = Bytes Fresh Lambda_Calcul Option Tricks MyList MyString Pretty Bit_Vector Date Logger Color Html Pattern Symbol State Alphabet Band Action Transition Turing_Machine Configuration Execution LC_by_MT Demo Emulator $(SOL)
 
 ML  = $(addsuffix  .ml, $(MODULES))
 CMO = $(addsuffix .cmo, $(MODULES))
@@ -36,7 +36,7 @@ cmo: $(ML) main.ml
 play: $(log_dir)
 	@make cmo
 	@echo "#use \"main.ml\";;" > .ledit_history
-	@ledit ocaml $(CMA) $(CMO) 
+	@ledit ocaml $(CMA) $(CMO)
 
 run: $(log_dir)
 	@make cmo
@@ -51,7 +51,7 @@ clean:
 	@camlp4o -impl $< -o $@
 
 %.cmo: %.ml
-	@ocamlc *.cmo $< 
+	@ocamlc *.cmo $<
 
 $(log_dir):
 	@if test ! -d $(log_dir); then mkdir $(log_dir)/; fi
