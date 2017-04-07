@@ -351,6 +351,61 @@ module Turing_Machine =
 	   ]
 	  }
 
+	(*Marche*)
+	let(check_parenthesis :turing_machine) = 
+		let init = nop.initial and accept = nop.accept and reject = nop.reject in
+			let q = State.fresh_from init and state_1 = State.fresh_from init and state_2 = State.fresh_from init  in{
+				nop with
+				nb_bands = 2;
+				name = "cp";
+				transitions =
+				[	
+					(* Match (OUT [O;B;P]) Pour avoir plusieurs valeurs exclues*)
+					(init, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ]), state_1);
+					(init, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ]), accept);
+					(init, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Here) ; RWM (Match(VAL O), No_Write, Here) ]), reject);
+					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ]), reject);
+					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Right) ; RWM (Match(VAL O), Write B, Left) ]), init);
+					(init, Action( Simultaneous [ RWM (Match (OUT [O;B;C]), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ]), init);
+					(state_1, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(BUT B), No_Write, Right) ]), state_2);
+					(state_2, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL B), Write O, Here) ]), init);
+
+				]
+			}
+
+	let(c_p :turing_machine) = 
+		let init = nop.initial and accept = nop.accept and reject = nop.reject in
+			let  stateO = State.fresh_from init and stateC = State.fresh_from init  in{
+				nop with
+				nb_bands = 3;
+				name = "cpV2";
+				transitions =
+				[	
+					(* Match (OUT [O;B;P]) Pour avoir plusieurs valeurs exclues*)
+					(*Si y'a que des blancs *)
+					(init, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(VAL B), No_Write, Here)]), accept);
+					(* Si y'a une variable *)
+					(init, Action( Simultaneous [ RWM (Match(OUT [O;C;B]), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Right)]), init);
+					(*Si un problème est détecté *)
+					(init, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Here) ; RWM (Match(VAL O), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), reject);
+
+					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), reject);
+					(*Fin*)
+
+					(*Si on a des parenthèses à traiter*)
+					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Right) ; RWM (Match(VAL O), Write B, Left) ; RWM (Match(ANY), No_Write, Here)]), stateO);
+
+					(init, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), Write S, Right)]), stateC);
+
+					(stateO, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write S, Right)]), init);
+					
+					(stateC, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL B), Write O, Here) ; RWM (Match(ANY), No_Write, Here)]), init);
+					
+					
+
+				]
+			}
+
 	
 	    
   end)

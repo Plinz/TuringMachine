@@ -31,7 +31,7 @@ module Execution =
 	    | []           -> None
 	    | [transition] -> Some transition
 	    | transitions  ->
-		    let error = "Execution.select_enabled_transition: non deterministic TM" in
+		    let error = "Execution.select_enabled_transition: non deterministic TM\n" in
 		      let msg = String.concat " "
 			  [ error ; cfg.tm.name ; String.concat "\n - " (List.map Transition.pretty transitions) ]
 		      in begin print_string msg ; failwith error  end
