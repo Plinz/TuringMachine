@@ -425,7 +425,7 @@ let(real_one :turing_machine) =
 					(init, Action( Simultaneous [ RWM (Match(VAL D), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write D, Right)]), init);
 					(init, Action( Simultaneous [ RWM (Match(VAL U), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write U, Right)]), init);
 					(init, Action( Simultaneous [ RWM (Match(VAL Z), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write Z, Right)]), init);
-
+					(init, Action( Simultaneous [ RWM (Match(VAL X), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write X, Right)]), init);
 					(*Si parenthèse fermante : *)
 					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Right) ; RWM (Match(VAL B), No_Write, Left) ; RWM (Match(VAL B), Write C, Right)]), Q 2);
 
@@ -433,10 +433,68 @@ let(real_one :turing_machine) =
 					(Q 2, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), Write B, Left) ; RWM (Match(ANY), No_Write, Here)]), Q 3);
 
 					(*Si c'est la derniere : accepter*)
-					(Q 3, Action( Simultaneous [ RWM (Match(ANY), No_Write , Right) ; RWM (Match(VAL B), Write D, Here) ; RWM (Match(ANY), No_Write, Here)]), accept);
+					(Q 3, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), accept);
 
 					(*Sinon retourner dans l'état initial*)
 					(Q 3, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), No_Write, Right) ; RWM (Match(ANY), No_Write, Here)]), init);
+				
+				]
+	}
+
+let(application :turing_machine) = 
+		let init = nop.initial and accept = nop.accept and reject = nop.reject in
+			let q = State.fresh_from init in{
+				nop with
+				nb_bands = 3;
+				name = "application";
+				transitions =
+				[	
+					(* Match (OUT [O;B;P]) Pour avoir plusieurs valeurs exclues*)
+
+					(*Oublier le premier terme*)
+					(*Si parethèse ouvrante : l'empiler.*)
+					(init, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(VAL B), Write O, Right) ; RWM (Match(ANY), No_Write, Here)]), init);
+
+					(*Si terme quelconque : Oublier.*)
+					(init, Action( Simultaneous [ RWM (Match(OUT[O;C;B]), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), init);
+					(init, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Right)]), reject);
+					
+
+					(*Si parenthèse fermante : *)
+					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Right) ; RWM (Match(VAL B), No_Write, Left) ; RWM (Match(ANY), No_Write, Here)]), Q 2);
+
+					(*On la dépile *)
+					(Q 2, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), Write B, Left) ; RWM (Match(ANY), No_Write, Here)]), Q 3);
+
+					(*Si c'est la derniere : passer au terme a copier sur la bande suivante*)
+					(Q 3, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), Q 4);
+
+					(*Sinon retourner dans l'état initial*)
+					(Q 3, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), No_Write, Right) ; RWM (Match(ANY), No_Write, Here)]), init);
+
+					(*A partir de là, on est sur le terme a recopier.*)
+					(*Empiler les parenthèses ouvrantes.*)
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(VAL B), Write O, Right) ; RWM (Match(VAL B), Write O, Right)]), Q 4);
+					
+					(*Empiler ecrire les termes*)
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL L), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write L, Right)]), Q 4);
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL D), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write D, Right)]), Q 4);
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL U), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write U, Right)]), Q 4);
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL Z), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write Z, Right)]), Q 4);
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL X), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write X, Right)]), Q 4);
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Right)]), reject);
+
+					(*Si parenthèse fermante : *)
+					(Q 4 , Action( Simultaneous [ RWM (Match(VAL C), No_Write , Right) ; RWM (Match(VAL B), No_Write, Left) ; RWM (Match(VAL B), Write C, Right)]), Q 5);
+
+					(*On la dépile *)
+					(Q 5, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), Write B, Left) ; RWM (Match(ANY), No_Write, Here)]), Q 6);
+
+					(*Si c'est la derniere : accepter*)
+					(Q 6, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), accept);
+
+					(*Sinon retourner dans l'état initial*)
+					(Q 6, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), No_Write, Right) ; RWM (Match(ANY), No_Write, Here)]), Q 4);
 				
 				]
 	}
@@ -449,8 +507,12 @@ let(substitution :turing_machine) =
 				name = "substitution";
 				transitions =
 				[	
-					(* Ok on commence : test des machines  *)
-					(init, Parallel [ Action(Nop) ; Run(real_one) ], accept) 
+					(* Ok ! on commence : On place le terme a substituer sur la troisième bande *)
+					(init,  Run(application),  Q 2);
+					(Q 2 , Parallel [ Run(left_most) ; Run(nop);Run(left_most)], Q 3 );
+					(*Ok ! A partir de là, on a le terme a substituer sur la troisième bande et on est au debut de la bande 1 et 3.*)
+					(Q 3, Action( Simultaneous [ RWM (Match(BUT B), Write D , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Right)]), Q 3 );
+					(Q 3, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Right)]), accept);
 				]
 	}
 	    
