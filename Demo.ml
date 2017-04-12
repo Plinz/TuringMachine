@@ -106,6 +106,23 @@ let (c_ps: unit -> Configuration.t) = fun () ->
 	    Execution.log_run cfg
 
 
+let (test: unit -> Configuration.t) = fun () ->
+      let alphabet = Alphabet.make [B;Z;U;O;S;D;L] in
+	let band1 = Band.make alphabet [L;U;Z;O;U;U;O;U;C;C;O;C] 
+	and band2 = Band.make alphabet [B;B;B;B;B] 
+	and band3 = Band.make alphabet [B;B;B;B;B] in 
+	  let cfg = Configuration.make Turing_Machine.real_one [ band1 ; band2 ; band3] in
+	    Execution.log_run cfg
+
+let (sub: unit -> Configuration.t) = fun () ->
+      let alphabet = Alphabet.make [B;Z;U;O;S;D;L] in
+	let band1 = Band.make alphabet [L;U;Z;O;U;U;O;U;C;C;O;C] 
+	and band2 = Band.make alphabet [B;B;B;B;B] 
+	and band3 = Band.make alphabet [B;B;B;B;B] in 
+	  let cfg = Configuration.make Turing_Machine.substitution [ band1 ; band2 ; band3] in
+	    Execution.log_run cfg
+
+
 (* DEMO *)
 	        
 let (demo: unit -> unit) = fun () ->
@@ -123,7 +140,9 @@ let (demo: unit -> unit) = fun () ->
 	    xor () ;
 	    busy_beaver Turing_Machine.bb4 ;
 	    c_p();
-	    c_ps();
+	    (*c_ps();*)
+	    test();	
+	    sub();
 	    
            (* 
 	    * /!\  TERMINATING BUT EXTREMLY LONG COMPUTATIONS ... The sun will be dead before the end of BB6.

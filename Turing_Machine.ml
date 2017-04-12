@@ -371,8 +371,8 @@ module Turing_Machine =
 					(state_2, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL B), Write O, Here) ]), init);
 
 				]
-			}
-
+	}
+	(* Oublie, ne marche pas*)
 	let(c_p :turing_machine) = 
 		let init = nop.initial and accept = nop.accept and reject = nop.reject in
 			let  stateO = State.fresh_from init and stateC = State.fresh_from init  in{
@@ -406,7 +406,53 @@ module Turing_Machine =
 				]
 			}
 
-	
+
+let(real_one :turing_machine) = 
+		let init = nop.initial and accept = nop.accept and reject = nop.reject in
+			let q = State.fresh_from init in{
+				nop with
+				nb_bands = 3;
+				name = "real_one";
+				transitions =
+				[	
+					(* Match (OUT [O;B;P]) Pour avoir plusieurs valeurs exclues*)
+
+					(*Si parethèse ouvrante : l'empiler.*)
+					(init, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(VAL B), Write O, Right) ; RWM (Match(VAL B), Write O, Right)]), init);
+
+					(*Si terme quelconque : l'écrire sur la bande.*)
+					(init, Action( Simultaneous [ RWM (Match(VAL L), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write L, Right)]), init);
+					(init, Action( Simultaneous [ RWM (Match(VAL D), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write D, Right)]), init);
+					(init, Action( Simultaneous [ RWM (Match(VAL U), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write U, Right)]), init);
+					(init, Action( Simultaneous [ RWM (Match(VAL Z), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write Z, Right)]), init);
+
+					(*Si parenthèse fermante : *)
+					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Right) ; RWM (Match(VAL B), No_Write, Left) ; RWM (Match(VAL B), Write C, Right)]), Q 2);
+
+					(*On la dépile *)
+					(Q 2, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), Write B, Left) ; RWM (Match(ANY), No_Write, Here)]), Q 3);
+
+					(*Si c'est la derniere : accepter*)
+					(Q 3, Action( Simultaneous [ RWM (Match(ANY), No_Write , Right) ; RWM (Match(VAL B), Write D, Here) ; RWM (Match(ANY), No_Write, Here)]), accept);
+
+					(*Sinon retourner dans l'état initial*)
+					(Q 3, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), No_Write, Right) ; RWM (Match(ANY), No_Write, Here)]), init);
+				
+				]
+	}
+
+let(substitution :turing_machine) = 
+		let init = nop.initial and accept = nop.accept and reject = nop.reject in
+			let q = State.fresh_from init in{
+				nop with
+				nb_bands = 3;
+				name = "substitution";
+				transitions =
+				[	
+					(* Ok on commence : test des machines  *)
+					(init, Parallel [ Action(Nop) ; Run(real_one) ], accept) 
+				]
+	}
 	    
   end)
 
