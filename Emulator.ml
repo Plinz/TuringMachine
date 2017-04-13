@@ -384,23 +384,22 @@ module Binary =
         let move_Instructions = get_Instructions_Moving encoding moving in
         ((fun (a,b,c) -> a) read_Transitions)@[(((fun (a,b,c) -> b) read_Transitions), Seq(write_Instructions@move_Instructions), State.accept)]
 
-    let rec (transitions_emulating: encoding -> State.t * Action.t * State.t -> Transition.t list) = fun encoding (source,action,target) ->
-        let () = Printf.printf "\nGET STRING STATE SOURCE :\n%s\n" (State.to_ascii source) in
-        let () = Printf.printf "\nGET STRING ACTION :\n%s\n" (Action.to_ascii action) in
-        let () = Printf.printf "\nGET STRING STATE TARGET :\n%s\n" (State.to_ascii target) in
+    let rec (emulate_action: encoding -> State.t * Action.t * State.t -> Turing_Machine.t) = fun encoding (source,action,target) ->
 
-	    (match action with
-	    | Nop -> [ (source, Action(Nop), target) ]
+        let rec (simultaneous_Actions: encoding -> State.t -> Action.t list -> State.t -> Instruction.t list) = fun encoding source actions target ->
+            match actions with
+            | [] -> []
+            | h::t -> (Run (emulate_action encoding (source, h, target)))::(simultaneous_Actions encoding source t target)
+        in
+        let (transitions_emulating: encoding -> State.t * Action.t * State.t -> Transition.t list) = fun encoding (source,action,target) ->
+    	    (match action with
+    	    | Nop -> [ (source, Action(Nop), target) ]
 
-	    | RWM(r,w,m) -> simple_action encoding source r w m
+    	    | RWM(r,w,m) -> simple_action encoding source r w m
 
-	    | Simultaneous actions -> [ (source, Action(Nop), target) ]
-	    )
-
-
-    let (emulate_action: encoding -> State.t * Action.t * State.t -> Turing_Machine.t) = fun encoding (source,action,target) ->
-
-      let transitions =  transitions_emulating encoding (source,action,target) in
+    	    | Simultaneous actions -> [(source, Parallel (simultaneous_Actions encoding source actions target), target)]
+    	    )
+        in
 
       let (source,target) =
         if source <> target   (* /!\ loop in the emulated TM if source-target *)
@@ -438,8 +437,9 @@ open Alphabet
 let (demo: unit -> unit) = fun () ->
       print_string "\n\n* DEMO * Emulator.ml:\n" ;
       let alphabet = Alphabet.make [B;Z;U] in
-	let band = Band.make alphabet [U;U;Z;U] in
-	  let tm = Turing_Machine.incr in
-	    let cfg = Configuration.make tm [ band ] in
+	  let band = Band.make alphabet [U;U;Z;U] in
+      let band2 = Band.make alphabet [Z;U;Z;Z] in
+	  let tm = Turing_Machine.generic_copy [B;Z;U;L] in
+	    let cfg = Configuration.make tm [ band; band2 ] in
 	      let _final_cfg = Simulator.log_run_using ([ (* Split.simulator ; *) Binary.make_simulator alphabet ],[]) cfg
 		  in ()
