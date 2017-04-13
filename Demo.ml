@@ -89,6 +89,47 @@ let (busy_beaver: Turing_Machine.t -> Configuration.t) = fun bb ->
 	  let cfg = Configuration.make bb [ band ] in
 	    Execution.log_run cfg 
 
+let (c_p: unit -> Configuration.t) = fun () ->
+      let alphabet = Alphabet.make [B;Z;U;O] in
+	let band1 = Band.make alphabet [O;Z;C;O;C] 
+	and band2 = Band.make alphabet [B;B;B;B;B] in
+	  let cfg = Configuration.make Turing_Machine.check_parenthesis [ band1 ; band2 ] in
+	    Execution.log_run cfg
+
+
+let (c_ps: unit -> Configuration.t) = fun () ->
+      let alphabet = Alphabet.make [B;Z;U;O;S] in
+	let band1 = Band.make alphabet [O;Z;C;O;C] 
+	and band2 = Band.make alphabet [B;B;B;B;B] 
+	and band3 = Band.make alphabet [B;B;B;B;B] in 
+	  let cfg = Configuration.make Turing_Machine.c_p [ band1 ; band2 ; band3] in
+	    Execution.log_run cfg
+
+
+let (test: unit -> Configuration.t) = fun () ->
+      let alphabet = Alphabet.make [B;Z;U;O;S;D;L] in
+	let band1 = Band.make alphabet [L;U;Z;O;U;U;O;U;C;C;O;C] 
+	and band2 = Band.make alphabet [B;B;B;B;B] 
+	and band3 = Band.make alphabet [B;B;B;B;B] in 
+	  let cfg = Configuration.make Turing_Machine.real_one [ band1 ; band2 ; band3] in
+	    Execution.log_run cfg
+
+let (sub: unit -> Configuration.t) = fun () ->
+      let alphabet = Alphabet.make [B;Z;U;O;S;D;L] in
+	let band1 = Band.make alphabet [O;L;X;Z;L;X;U;O;Z;U;C;C;O;X;U;U;U;C] 
+	and band2 = Band.make alphabet [B;B;B;B;B] 
+	and band3 = Band.make alphabet [B;B;B;B;B] in 
+	  let cfg = Configuration.make Turing_Machine.substitution [ band1 ; band2 ; band3] in
+	    Execution.log_run cfg
+
+let (app: unit -> Configuration.t) = fun () ->
+      let alphabet = Alphabet.make [B;Z;U;O;S;D;L;X] in
+	let band1 = Band.make alphabet [O;L;X;Z;L;X;U;O;Z;U;C;C;O;X;U;U;U;C] 
+	and band2 = Band.make alphabet [B;B;B;B;B] 
+	and band3 = Band.make alphabet [B;B;B;B;B] in 
+	  let cfg = Configuration.make Turing_Machine.application [ band1 ; band2 ; band3] in
+	    Execution.log_run cfg
+
 
 (* DEMO *)
 	        
@@ -105,7 +146,14 @@ let (demo: unit -> unit) = fun () ->
 	    gen_reverse () ;
 	    gen_swap () ;
 	    xor () ;
-	    busy_beaver Turing_Machine.bb4
+	    busy_beaver Turing_Machine.bb4 ;
+	    c_p();
+		app();
+	    (*c_ps();*)
+	    test();	
+	    sub();
+	    
+	    
            (* 
 	    * /!\  TERMINATING BUT EXTREMLY LONG COMPUTATIONS ... The sun will be dead before the end of BB6.
 	    *

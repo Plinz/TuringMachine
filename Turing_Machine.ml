@@ -351,7 +351,170 @@ module Turing_Machine =
 	   ]
 	  }
 
-	
+	(*Marche*)
+	let(check_parenthesis :turing_machine) = 
+		let init = nop.initial and accept = nop.accept and reject = nop.reject in
+			let q = State.fresh_from init and state_1 = State.fresh_from init and state_2 = State.fresh_from init  in{
+				nop with
+				nb_bands = 2;
+				name = "cp";
+				transitions =
+				[	
+					(* Match (OUT [O;B;P]) Pour avoir plusieurs valeurs exclues*)
+					(init, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ]), state_1);
+					(init, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ]), accept);
+					(init, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Here) ; RWM (Match(VAL O), No_Write, Here) ]), reject);
+					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ]), reject);
+					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Right) ; RWM (Match(VAL O), Write B, Left) ]), init);
+					(init, Action( Simultaneous [ RWM (Match (OUT [O;B;C]), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ]), init);
+					(state_1, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(BUT B), No_Write, Right) ]), state_2);
+					(state_2, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL B), Write O, Here) ]), init);
+
+				]
+	}
+	(* Oublie, ne marche pas*)
+	let(c_p :turing_machine) = 
+		let init = nop.initial and accept = nop.accept and reject = nop.reject in
+			let  stateO = State.fresh_from init and stateC = State.fresh_from init  in{
+				nop with
+				nb_bands = 3;
+				name = "cpV2";
+				transitions =
+				[	
+					(* Match (OUT [O;B;P]) Pour avoir plusieurs valeurs exclues*)
+					(*Si y'a que des blancs *)
+					(init, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(VAL B), No_Write, Here)]), accept);
+					(* Si y'a une variable *)
+					(init, Action( Simultaneous [ RWM (Match(OUT [O;C;B]), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Right)]), init);
+					(*Si un problème est détecté *)
+					(init, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Here) ; RWM (Match(VAL O), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), reject);
+
+					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), reject);
+					(*Fin*)
+
+					(*Si on a des parenthèses à traiter*)
+					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Right) ; RWM (Match(VAL O), Write B, Left) ; RWM (Match(ANY), No_Write, Here)]), stateO);
+
+					(init, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), Write S, Right)]), stateC);
+
+					(stateO, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write S, Right)]), init);
+					
+					(stateC, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL B), Write O, Here) ; RWM (Match(ANY), No_Write, Here)]), init);
+					
+					
+
+				]
+			}
+
+
+let(real_one :turing_machine) = 
+		let init = nop.initial and accept = nop.accept and reject = nop.reject in
+			let q = State.fresh_from init in{
+				nop with
+				nb_bands = 3;
+				name = "real_one";
+				transitions =
+				[	
+					(* Match (OUT [O;B;P]) Pour avoir plusieurs valeurs exclues*)
+
+					(*Si parethèse ouvrante : l'empiler.*)
+					(init, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(VAL B), Write O, Right) ; RWM (Match(VAL B), Write O, Right)]), init);
+
+					(*Si terme quelconque : l'écrire sur la bande.*)
+					(init, Action( Simultaneous [ RWM (Match(VAL L), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write L, Right)]), init);
+					(init, Action( Simultaneous [ RWM (Match(VAL D), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write D, Right)]), init);
+					(init, Action( Simultaneous [ RWM (Match(VAL U), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write U, Right)]), init);
+					(init, Action( Simultaneous [ RWM (Match(VAL Z), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write Z, Right)]), init);
+					(init, Action( Simultaneous [ RWM (Match(VAL X), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write X, Right)]), init);
+					(*Si parenthèse fermante : *)
+					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Right) ; RWM (Match(VAL B), No_Write, Left) ; RWM (Match(VAL B), Write C, Right)]), Q 2);
+
+					(*On la dépile *)
+					(Q 2, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), Write B, Left) ; RWM (Match(ANY), No_Write, Here)]), Q 3);
+
+					(*Si c'est la derniere : accepter*)
+					(Q 3, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), accept);
+
+					(*Sinon retourner dans l'état initial*)
+					(Q 3, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), No_Write, Right) ; RWM (Match(ANY), No_Write, Here)]), init);
+				
+				]
+	}
+
+let(application :turing_machine) = 
+		let init = nop.initial and accept = nop.accept and reject = nop.reject in
+			let q = State.fresh_from init in{
+				nop with
+				nb_bands = 3;
+				name = "application";
+				transitions =
+				[	
+					(* Match (OUT [O;B;P]) Pour avoir plusieurs valeurs exclues*)
+
+					(*Oublier le premier terme*)
+					(*Si parethèse ouvrante : l'empiler.*)
+					(init, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(VAL B), Write O, Right) ; RWM (Match(ANY), No_Write, Here)]), init);
+
+					(*Si terme quelconque : Oublier.*)
+					(init, Action( Simultaneous [ RWM (Match(OUT[O;C;B]), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), init);
+					(init, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Right)]), reject);
+					
+
+					(*Si parenthèse fermante : *)
+					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Right) ; RWM (Match(VAL B), No_Write, Left) ; RWM (Match(ANY), No_Write, Here)]), Q 2);
+
+					(*On la dépile *)
+					(Q 2, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), Write B, Left) ; RWM (Match(ANY), No_Write, Here)]), Q 3);
+
+					(*Si c'est la derniere : passer au terme a copier sur la bande suivante*)
+					(Q 3, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), Q 4);
+
+					(*Sinon retourner dans l'état initial*)
+					(Q 3, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), No_Write, Right) ; RWM (Match(ANY), No_Write, Here)]), init);
+
+					(*A partir de là, on est sur le terme a recopier.*)
+					(*Empiler les parenthèses ouvrantes.*)
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(VAL B), Write O, Right) ; RWM (Match(VAL B), Write O, Right)]), Q 4);
+					
+					(*Empiler ecrire les termes*)
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL L), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write L, Right)]), Q 4);
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL D), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write D, Right)]), Q 4);
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL U), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write U, Right)]), Q 4);
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL Z), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write Z, Right)]), Q 4);
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL X), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write X, Right)]), Q 4);
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Right)]), reject);
+
+					(*Si parenthèse fermante : *)
+					(Q 4 , Action( Simultaneous [ RWM (Match(VAL C), No_Write , Right) ; RWM (Match(VAL B), No_Write, Left) ; RWM (Match(VAL B), Write C, Right)]), Q 5);
+
+					(*On la dépile *)
+					(Q 5, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), Write B, Left) ; RWM (Match(ANY), No_Write, Here)]), Q 6);
+
+					(*Si c'est la derniere : accepter*)
+					(Q 6, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), accept);
+
+					(*Sinon retourner dans l'état initial*)
+					(Q 6, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), No_Write, Right) ; RWM (Match(ANY), No_Write, Here)]), Q 4);
+				
+				]
+	}
+
+let(substitution :turing_machine) = 
+		let init = nop.initial and accept = nop.accept and reject = nop.reject in
+			let q = State.fresh_from init in{
+				nop with
+				nb_bands = 3;
+				name = "substitution";
+				transitions =
+				[	
+					(* Ok ! on commence : On place le terme a substituer sur la troisième bande *)
+					(init,  Run(application),  Q 2);
+					(Q 2 , Parallel [ Run(left_most) ; Run(nop);Run(left_most)], Q 3 );
+					(*Ok ! A partir de là, on a le terme a substituer sur la troisième bande et on est au debut de la bande 1 et 3.*)
+					(Q 3, Action( Simultaneous [ RWM (Match(BUT B), Write D , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Right)]), Q 3 );
+					(Q 3, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Right)]), accept);
+				]
+	}
 	    
   end)
 
