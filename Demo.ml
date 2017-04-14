@@ -90,8 +90,8 @@ let (busy_beaver: Turing_Machine.t -> Configuration.t) = fun bb ->
 	    Execution.log_run cfg 
 
 let (c_p: unit -> Configuration.t) = fun () ->
-      let alphabet = Alphabet.make [B;Z;U;O] in
-	let band1 = Band.make alphabet [O;Z;C;O;C] 
+      let alphabet = Alphabet.make [Z;U;O;S;L;X;C;S] in
+	let band1 = Band.make alphabet [O;L;X;Z;Z;Z;Z;O;L;X;Z;Z;Z;U;O;L;X;Z;Z;U;Z;O;X;Z;Z;U;Z;O;X;Z;Z;Z;Z;C;X;Z;Z;Z;U;C;C;C;C;O;L;X;U;U;U;U;O;Z;U;U;Z;C;C;O;X;U;U;U;Z;C;O;X;U;U;Z;Z;C] 
 	and band2 = Band.make alphabet [B;B;B;B;B] in
 	  let cfg = Configuration.make Turing_Machine.check_parenthesis [ band1 ; band2 ] in
 	    Execution.log_run cfg
@@ -109,8 +109,9 @@ let (test: unit -> Configuration.t) = fun () ->
 let (sub: unit -> Configuration.t) = fun () ->
       let alphabet = Alphabet.make [Z;U;O;S;L;X;C;S] in
 	let substitution = Turing_Machine.substitution alphabet.symbols in
-	let band1 = Band.make alphabet (*[O;L;X;Z;Z;O;L;X;U;Z;O;L;X;Z;U;O;X;Z;Z;X;Z;Z;C;C;C;C;O;X;U;Z;C;O;X;Z;U;C;O;X;U;U;C]*)
-	[O;L;X;Z;Z;Z;Z;O;L;X;Z;Z;Z;U;O;L;X;Z;Z;U;Z;O;X;Z;Z;U;Z;O;X;Z;Z;Z;Z;C;X;Z;Z;Z;U;C;C;C;C;O;L;X;U;U;U;U;O;Z;U;U;Z;C;C;O;X;U;U;U;Z;C;O;X;U;U;Z;Z;C]
+	let band1 = Band.make alphabet [O;L;X;U;U;O;X;U;U;X;U;U;X;U;Z;C;C;O;X;Z;Z;C]
+	(*[O;L;X;Z;Z;O;L;X;U;Z;O;L;X;Z;U;O;X;Z;Z;X;Z;Z;C;C;C;C;O;X;U;Z;C;O;X;Z;U;C;O;X;U;U;C]
+	[O;L;X;Z;Z;Z;Z;O;L;X;Z;Z;Z;U;O;L;X;Z;Z;U;Z;O;X;Z;Z;U;Z;O;X;Z;Z;Z;Z;C;X;Z;Z;Z;U;C;C;C;C;O;L;X;U;U;U;U;O;Z;U;U;Z;C;C;O;X;U;U;U;Z;C;O;X;U;U;Z;Z;C]*)
 	and band2 = Band.make alphabet [B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B] 
 	and band3 = Band.make alphabet [B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B]
 	and band4 = Band.make alphabet [B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B] in 
@@ -143,11 +144,13 @@ let (demo: unit -> unit) = fun () ->
 	    gen_swap () ;
 	    xor () ;
 	    busy_beaver Turing_Machine.bb4 ;
+
+	    (*Test parenthésage correct.*)
 	    c_p();
+	    (*Test copie application.*)
 	    app();
+	    (*Test substitution.*)
  	    sub();
-	
-	    (*c_ps();*)
 	    test();	
 	    
 	    

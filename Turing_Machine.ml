@@ -640,7 +640,7 @@ let(substitution :symbols -> turing_machine) = fun symbols ->
 						(*Avancer dans l'égalité.*)
 						(Q 81, Action( Simultaneous [ RWM (Match(VAL Z), No_Write , Right) ; RWM (Match(VAL Z), No_Write, Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write Z, Right)]), Q 81);
 						(Q 81, Action( Simultaneous [ RWM (Match(VAL U), No_Write , Right) ; RWM (Match(VAL U), No_Write, Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write U, Right)]), Q 81);
-						(*Sinon quitter quand on détecte une différence qui sont autant de chances.*)
+						(*Sinon quitter quand on détecte une différence.*)
 						(Q 81, Action( Simultaneous [ RWM (Match(VAL U), No_Write , Right) ; RWM (Match(VAL Z), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write U, Right)]), Q 30);
 						(Q 81, Action( Simultaneous [ RWM (Match(VAL Z), No_Write , Right) ; RWM (Match(VAL U), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write Z, Right)]), Q 30);
 
