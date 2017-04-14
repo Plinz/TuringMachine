@@ -310,8 +310,62 @@ module Turing_Machine =
 		  nb_bands = 2 ;
 		  name = "copy_" ^ (Pretty.set Symbol.to_ascii symbols) ;
 		  transitions = generic_transitions
-		  @ [ (init, Action( Simultaneous [ RWM(Match(VAL B), No_Write, Left)  ; RWM(Match ANY, No_Write, Left) ]), q) ;
-		      (q, Parallel [ Run(left_most) ; Run (left_most) ], accept) 
+		  @ [ (init, Action( Simultaneous [ RWM(Match(VAL B), No_Write, Left)  ; RWM(Match ANY, No_Write, Left) ]), Q 100) ;
+		      (Q 100, Parallel [ Run(left_most) ; Run (left_most)], accept) 
+		    ] 
+		}
+
+
+     let (generic_copy_with_4: symbols -> turing_machine) = fun symbols ->
+	  let init = nop.initial and accept = nop.accept in
+	    let q = State.fresh_from init in	          	  
+	      let generic_transitions =
+		Transition.foreach_symbol_of symbols (BUT B)
+		  (fun s ->
+			[ (init, Action( Simultaneous [ RWM(Match ANY, No_Write, Here);RWM(Match ANY, No_Write, Here);RWM(Match(VAL s), No_Write, Right) ; RWM(Match ANY, Write s, Right) ]), init) ]
+		  )
+	      in 
+		{ nop with
+		  nb_bands = 4 ;
+		  name = "copy_4" ^ (Pretty.set Symbol.to_ascii symbols) ;
+		  transitions = generic_transitions
+		  @ [ (init, Action( Simultaneous [ RWM(Match ANY, No_Write, Here);RWM(Match ANY, No_Write, Here);RWM(Match(VAL B), No_Write, Left)  ; RWM(Match ANY, No_Write, Left) ]), Q 100) ;
+		      (Q 100, Parallel [ Run(nop);Run(nop);Run(left_most) ; Run (left_most)], accept) 
+		    ] 
+		}
+
+   let (copy_1_on_4: symbols -> turing_machine) = fun symbols ->
+	  let init = nop.initial and accept = nop.accept in
+	    let q = State.fresh_from init in	          	  
+	      let generic_transitions =
+		Transition.foreach_symbol_of symbols (BUT B)
+		  (fun s ->
+			[ (init, Action( Simultaneous [ RWM(Match (VAL s), No_Write, Right);RWM(Match (ANY), No_Write, Here);RWM(Match(ANY), No_Write, Here) ; RWM(Match (ANY), Write s, Right) ]), init) ]
+		  )
+	      in 
+		{ nop with
+		  nb_bands = 4 ;
+		  name = "copy_14" ^ (Pretty.set Symbol.to_ascii symbols) ;
+		  transitions = generic_transitions
+		  @ [ (init, Action( Simultaneous [ RWM(Match (VAL B), No_Write, Here);RWM(Match ANY, No_Write, Here);RWM(Match(ANY), No_Write, Here)  ; RWM(Match ANY, No_Write, Here) ]), Q 100) ;
+		      (Q 100, Parallel [ Run(nop);Run(nop);Run(nop) ; Run (left_most)], accept) 
+		    ] 
+		}
+   let (copy_4_on_1: symbols -> turing_machine) = fun symbols ->
+	  let init = nop.initial and accept = nop.accept in
+	    let q = State.fresh_from init in	          	  
+	      let generic_transitions =
+		Transition.foreach_symbol_of symbols (BUT B)
+		  (fun s ->
+			[ (init, Action( Simultaneous [ RWM(Match (ANY), Write s, Right);RWM(Match (ANY), No_Write, Here);RWM(Match(ANY), No_Write, Here) ; RWM(Match (VAL s), No_Write, Right) ]), init) ]
+		  )
+	      in 
+		{ nop with
+		  nb_bands = 4 ;
+		  name = "copy_41" ^ (Pretty.set Symbol.to_ascii symbols) ;
+		  transitions = generic_transitions
+		  @ [ (init, Action( Simultaneous [ RWM(Match (ANY), No_Write, Here);RWM(Match ANY, No_Write, Here);RWM(Match(ANY), No_Write, Here)  ; RWM(Match (VAL B), No_Write, Here) ]), Q 100) ;
+		      (Q 100, Parallel [ Run(nop);Run(nop);Run(nop) ; Run (left_most)], accept) 
 		    ] 
 		}
 	
@@ -372,39 +426,7 @@ module Turing_Machine =
 
 				]
 	}
-	(* Oublie, ne marche pas*)
-	let(c_p :turing_machine) = 
-		let init = nop.initial and accept = nop.accept and reject = nop.reject in
-			let  stateO = State.fresh_from init and stateC = State.fresh_from init  in{
-				nop with
-				nb_bands = 3;
-				name = "cpV2";
-				transitions =
-				[	
-					(* Match (OUT [O;B;P]) Pour avoir plusieurs valeurs exclues*)
-					(*Si y'a que des blancs *)
-					(init, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(VAL B), No_Write, Here)]), accept);
-					(* Si y'a une variable *)
-					(init, Action( Simultaneous [ RWM (Match(OUT [O;C;B]), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Right)]), init);
-					(*Si un problème est détecté *)
-					(init, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Here) ; RWM (Match(VAL O), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), reject);
 
-					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), reject);
-					(*Fin*)
-
-					(*Si on a des parenthèses à traiter*)
-					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Right) ; RWM (Match(VAL O), Write B, Left) ; RWM (Match(ANY), No_Write, Here)]), stateO);
-
-					(init, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), Write S, Right)]), stateC);
-
-					(stateO, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write S, Right)]), init);
-					
-					(stateC, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL B), Write O, Here) ; RWM (Match(ANY), No_Write, Here)]), init);
-					
-					
-
-				]
-			}
 
 
 let(real_one :turing_machine) = 
@@ -441,6 +463,65 @@ let(real_one :turing_machine) =
 				]
 	}
 
+
+let(copyTerme : symbols -> turing_machine) = fun symbols ->
+		let init = nop.initial and accept = nop.accept and reject = nop.reject in
+			let q = State.fresh_from init in
+				let	generic_transitions = Transition.foreach_symbol_of symbols (OUT [O;B;C])
+		    		(fun s ->
+				  [ (Q 4, Action( Simultaneous [ RWM (Match(VAL s), Write S , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL B), Write s, Right)]), Q 4)]
+		   		 )in
+				{
+				nop with
+				nb_bands = 3;
+				name = "application"^ (Pretty.set Symbol.to_ascii symbols) ;
+				transitions = generic_transitions
+				@ [	
+					(* Match (OUT [O;B;P]) Pour avoir plusieurs valeurs exclues*)
+
+					(*Oublier le premier terme*)
+					(*Si parethèse ouvrante : l'empiler.*)
+					(init, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(VAL B), Write O, Right) ; RWM (Match(ANY), No_Write, Here)]), init);
+
+					(*Si terme quelconque : Oublier.*)
+					(init, Action( Simultaneous [ RWM (Match(OUT[O;C;B]), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), init);
+					(init, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Right)]), reject);
+					
+
+					(*Si parenthèse fermante : *)
+					(init, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Right) ; RWM (Match(VAL B), No_Write, Left) ; RWM (Match(ANY), No_Write, Here)]), Q 2);
+
+					(*On la dépile *)
+					(Q 2, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), Write B, Left) ; RWM (Match(ANY), No_Write, Here)]), Q 3);
+
+					(*Si c'est la derniere : passer au terme a copier sur la bande suivante*)
+					(Q 3, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), Q 4);
+
+					(*Sinon retourner dans l'état initial*)
+					(Q 3, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), No_Write, Right) ; RWM (Match(ANY), No_Write, Here)]), init);
+
+					(*A partir de là, on est sur le terme a recopier.*)
+					(*Empiler les parenthèses ouvrantes.*)
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL O), Write S , Right) ; RWM (Match(VAL B), Write O, Right) ; RWM (Match(VAL B), Write O, Right)]), Q 4);
+					
+					(*Empiler ecrire les termes*)
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Right)]), reject);
+
+					(*Si parenthèse fermante : *)
+					(Q 4 , Action( Simultaneous [ RWM (Match(VAL C), Write S , Right) ; RWM (Match(VAL B), No_Write, Left) ; RWM (Match(VAL B), Write C, Right)]), Q 5);
+
+					(*On la dépile *)
+					(Q 5, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), Write B, Left) ; RWM (Match(ANY), No_Write, Here)]), Q 6);
+
+					(*Si c'est la derniere : accepter*)
+					(Q 6, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), accept);
+
+					(*Sinon retourner dans l'état initial*)
+					(Q 6, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL O), No_Write, Right) ; RWM (Match(ANY), No_Write, Here)]), Q 4);
+				
+				]
+	}
+(* Application pas générique du tout !
 let(application :turing_machine) = 
 		let init = nop.initial and accept = nop.accept and reject = nop.reject in
 			let q = State.fresh_from init in{
@@ -498,23 +579,225 @@ let(application :turing_machine) =
 				
 				]
 	}
-
-let(substitution :turing_machine) = 
+*)
+let(substitution :symbols -> turing_machine) = fun symbols ->
 		let init = nop.initial and accept = nop.accept and reject = nop.reject in
-			let q = State.fresh_from init in{
+			let q = State.fresh_from init in
+			let	generic_transitions = Transition.foreach_symbol_of symbols (OUT [O;C])
+		    		(fun s ->
+				  [ 	(*Ecrire les X,U et Z de la variable.*)
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL s),  No_Write , Right) ; RWM (Match(ANY), Write s, Right) ; RWM (Match(ANY), No_Write, Here); RWM (Match(ANY), No_Write, Here)]), Q 4);
+					(*Ecrire les X, U et Z du lambda*)
+					(Q 31, Action( Simultaneous [ RWM (Match(VAL s),  No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here); RWM (Match(ANY), Write s, Right)]), Q 31)]
+		   		 )in
+			let	generic_transitions_2 = Transition.foreach_symbol_of symbols (OUT [S;X;U;Z;L])
+		    		(fun s ->
+					(*Ecrire les parentheses sur la quatrième bande*)
+				 	 [ (Q 30, Action( Simultaneous [ RWM (Match(VAL s), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here); RWM (Match(ANY), Write s, Right)]), Q 30)]
+		   		 )in
+			let	check_equality = Transition.foreach_symbol_of symbols (IN[Z;U])
+		    		(fun s ->
+					
+				 	 [ 
+					
+					]
+		   		 )in						
+				{
 				nop with
-				nb_bands = 3;
-				name = "substitution";
-				transitions =
-				[	
+				nb_bands = 4;
+				name = "substitutionDemo" ; 
+				transitions = generic_transitions @ generic_transitions_2 @ check_equality
+				@ [	
 					(* Ok ! on commence : On place le terme a substituer sur la troisième bande *)
-					(init,  Run(application),  Q 2);
-					(Q 2 , Parallel [ Run(left_most) ; Run(nop);Run(left_most)], Q 3 );
+					(init,  Run(copyTerme symbols) ,  Q 2);
+					(*On ramene la premiere bande a gauche, idem pour la troisieme.*)
+					(Q 2 , Parallel [ Run(left_most) ; Run(nop);Run(left_most);Run(nop)], Q 3);
 					(*Ok ! A partir de là, on a le terme a substituer sur la troisième bande et on est au debut de la bande 1 et 3.*)
-					(Q 3, Action( Simultaneous [ RWM (Match(BUT B), Write D , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Right)]), Q 3 );
-					(Q 3, Action( Simultaneous [ RWM (Match(VAL B), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Right)]), accept);
+					(* Sauter la toute parenthèse ouvrante : *)
+					(Q 3, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write,Here)]), Q 3);
+					(*On tombe sur le premier Lambda : le recopier sur la bande 2 pour savoir quelle variable sera a substituer.*)
+					(Q 3, Action( Simultaneous [ RWM (Match(VAL L),  No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write,Here)]), Q 4 );
+					(*Si il n'y a pas de lambda asssocie a notre application : une erreur est survenue*)
+					(Q 3, Action( Simultaneous [ RWM (Match(OUT[O;L]),  No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write,Here)]), reject);
+						
+					(*Si en recopiant un lambda on tombe sur une parenthèse fermante, alors erreur. *)
+						(Q 4, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), reject);
+					(*Si on a une parenthèse ouvrante, revenir à l'état où on cherche.*)
+						(Q 4, Action( Simultaneous [ RWM (Match(VAL O),  No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write O, Right)]), Q 30);
+
+					(*A partir de là, le nom de la variable a substituer est sur la bande 2.*)
+					(*Si on a une variable, alors il faut la remplacer : recopier sur la bande 4 la bande 3.*)
+					(Q 30, Action( Simultaneous [ RWM (Match(VAL X),  No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write X, Right)]), Q 70);				(*Placer la bande de la variable après le X.*)
+						(Q 70, Parallel[Run(nop);Run(left_most);Run(nop);Run(nop)], Q 80);
+						(Q 80, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(ANY), No_Write, Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), Q 81);
+
+						(*Puis checker l'égalité.*)
+						(*Si on a égalité stricte.*)
+						(Q 81, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), Q 82);
+						(*effacer la bande 4 jusqu'a la variable X*)
+						(Q 82, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(BUT X), Write B, Left)]), Q 81);
+						(Q 82, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(VAL X), Write B, Here)]), Q 85);
+						(*Avancer dans l'égalité.*)
+						(Q 81, Action( Simultaneous [ RWM (Match(VAL Z), No_Write , Right) ; RWM (Match(VAL Z), No_Write, Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write Z, Right)]), Q 81);
+						(Q 81, Action( Simultaneous [ RWM (Match(VAL U), No_Write , Right) ; RWM (Match(VAL U), No_Write, Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write U, Right)]), Q 81);
+						(*Sinon quitter quand on détecte une différence qui sont autant de chances.*)
+						(Q 81, Action( Simultaneous [ RWM (Match(VAL U), No_Write , Right) ; RWM (Match(VAL Z), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write U, Right)]), Q 30);
+						(Q 81, Action( Simultaneous [ RWM (Match(VAL Z), No_Write , Right) ; RWM (Match(VAL U), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write Z, Right)]), Q 30);
+
+						(*Debut de la recopie si on a égalité stricte*)
+						(Q 85, Parallel[Run(nop);Run(nop);Run(nop);Run(nop)], Q 90);
+						(Q 90, Run(generic_copy_with_4 symbols), Q 100);
+						(Q 100, Parallel[Run(nop);Run(nop);Run(nop);Run(goto_right_blank)], Q 30);
+					
+					(*Si on a un dollar : terminer.*)
+					(Q 30, Action( Simultaneous [ RWM (Match(VAL S), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), Q 320 );
+						(*Supprimer la derniere parenthese fermante.*)
+						(Q 320, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Left)]), Q 321 );
+						(Q 321, Action( Simultaneous [ RWM (Match(ANY), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write B, Here)]), Q 32 );
+
+						(*Passer les dollars*)
+						(Q 32, Action( Simultaneous [ RWM (Match(VAL S), No_Write, Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), Q 32);			(*Si y'en a pas alors plus de beta réductions a faire : accepter.*)
+						(Q 32, Action( Simultaneous [ RWM (Match(VAL B), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), accept);
+						(*Si il en reste, alors recopier les beta réductions restantes sur la bande 4*)
+						(Q 32, Action( Simultaneous [ RWM (Match(OUT[S;B]), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), Q 33);
+						(*Recopie*)
+						(Q 33 , Run(copy_1_on_4 symbols),Q 34);
+						(*On met toutes les bandes à gauche.*)
+						(Q 34 , Parallel[Run(left_most);Run(left_most);Run(left_most);Run(left_most)],Q 35);
+						(*Effacer les 3 premieres bandes.*)
+						(Q 35 , Parallel[Run(erase);Run(erase);Run(erase);Run(nop)],Q 36);
+						(*Recopié le terme substitué sur la bande 1.*)
+						(Q 36 , Run(copy_4_on_1 symbols),Q 37);
+						(*Revenir a gauche de la première bande et itérer.*)
+						(Q 37 , Parallel[Run(left_most);Run(nop);Run(nop);Run(erase)],init);
+					
+					
+					
+					(*Si on a un 1 ou un 0 les recopier (dans le cas ou on a détecté une inégalité)*)
+					(Q 30, Action( Simultaneous [ RWM (Match(VAL U), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY),Write U ,Right)]), Q 30);
+					(Q 30, Action( Simultaneous [ RWM (Match(VAL Z), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write Z,Right)]), Q 30);
+					(*Si on a un lambda, recopier la suite*)
+					(Q 30, Action( Simultaneous [ RWM (Match(VAL L),  No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write L, Right)]), Q 31);
+						(*Si on a une fermante : recopier*)
+						(Q 31, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), reject);
+						(*Si on a une parenthèse ouvrante, revenir à l'état où on cherche les variables.*)
+						(Q 31, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write O, Right)]), Q 30);
+					
 				]
 	}
+
+(*Prendre celle-là pour la démo si celle d'en haut ne marche pas du tout.
+let(substitution :symbols -> turing_machine) = fun symbols ->
+		let init = nop.initial and accept = nop.accept and reject = nop.reject in
+			let q = State.fresh_from init in
+			let	generic_transitions = Transition.foreach_symbol_of symbols (OUT [O;C])
+		    		(fun s ->
+				  [ 	(*Ecrire les X,U et Z de la variable.*)
+					(Q 4, Action( Simultaneous [ RWM (Match(VAL s), No_Write , Right) ; RWM (Match(ANY), Write s, Right) ; RWM (Match(ANY), No_Write, Here); RWM (Match(ANY), No_Write, Here)]), Q 4);
+					(*Ecrire les X, U et Z du lambda*)
+					(Q 31, Action( Simultaneous [ RWM (Match(VAL s), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here); RWM (Match(ANY), Write s, Right)]), Q 31)]
+		   		 )in
+			let	generic_transitions_2 = Transition.foreach_symbol_of symbols (OUT [S;X;U;Z;L])
+		    		(fun s ->
+					(*Ecrire sur la quatrième bande*)
+				 	 [ (Q 30, Action( Simultaneous [ RWM (Match(VAL s), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here); RWM (Match(ANY), Write s, Right)]), Q 30)]
+		   		 )in					
+				{
+				nop with
+				nb_bands = 4;
+				name = "substitution"^ (Pretty.set Symbol.to_ascii symbols) ; 
+				transitions = generic_transitions @ generic_transitions_2
+				@ [	
+					(* Ok ! on commence : On place le terme a substituer sur la troisième bande *)
+					(init,  Run(application symbols) ,  Q 2);
+					(Q 2 , Parallel [ Run(left_most) ; Run(nop);Run(left_most);Run(nop)], Q 3);
+					(*Ok ! A partir de là, on a le terme a substituer sur la troisième bande et on est au debut de la bande 1 et 3.*)
+					(* Sauter la parenthèse ouvrante : *)
+					(Q 3, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write O,Here)]), Q 3);
+					(*On tombe sur le premier Lambda terme : le recopier sur la bande 2.*)
+					(Q 3, Action( Simultaneous [ RWM (Match(VAL L), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write,Here)]), Q 4 );
+						
+					(*Si en passant un Lambda terme on tombe sur une parenthèse fermante, alors pas valide. *)
+						(Q 4, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), reject);
+					(*Si on a une parenthèse ouvrante, revenir à l'état où on cherche.*)
+						(Q 4, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(ANY), No_Write, Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write O, Right)]), Q 30);
+
+					(*A partir de là, la variable a substituer est sur la bande 2*)
+
+					(*Si on a une variable, alors il faut la remplacer : recopier sur la bande 4 la bande 3*)
+					(Q 30, Action( Simultaneous [ RWM (Match(VAL X), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), Q 70);
+						(Q 70, Parallel[Run(nop);Run(left_most);Run(nop);Run(nop)], Q 80);
+						(Q 80, Parallel[Run(nop);Run(nop);Run(nop);Run(goto_right_blank)], Q 90);
+						(Q 90, Run(generic_copy_with_4 symbols), Q 100);
+						(Q 100, Parallel[Run(nop);Run(nop);Run(nop);Run(goto_right_blank)], Q 30);
+					
+					(*Si on a un dollar : terminer.*)
+					(Q 30, Action( Simultaneous [ RWM (Match(VAL S), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Left)]), Q 32 );
+					(Q 32, Action( Simultaneous [ RWM (Match( ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write B, Here)]), accept );
+					
+					(*Si on a un 1 ou un 0 inopiné, ne pas les marquer.*)
+					(Q 30, Action( Simultaneous [ RWM (Match(IN[U;Z]), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), Q 30);
+					(*Si on a un lambda, recopier la suite*)
+					(Q 30, Action( Simultaneous [ RWM (Match(VAL L), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write L, Right)]), Q 31);
+						(*Si on a une fermante : erreur*)
+						(Q 31, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), reject);
+						(*Si on a une parenthèse ouvrante, revenir à l'état où on cherche les variables.*)
+						(Q 31, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(ANY), No_Write, Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write O, Right)]), Q 30);
+					
+				]
+	}
+*)
+
+
+
+(*	Obsolète
+let(substitution :symbols -> turing_machine) = fun symbols ->
+		let init = nop.initial and accept = nop.accept and reject = nop.reject in
+			let q = State.fresh_from init in
+			let	generic_transitions = Transition.foreach_symbol_of symbols (OUT [O;C])
+		    		(fun s ->
+				  [ (Q 4, Action( Simultaneous [ RWM (Match(VAL s), No_Write , Right) ; RWM (Match(ANY), Write s, Right) ; RWM (Match(ANY), No_Write, Here); RWM (Match(ANY), No_Write, Here)]), Q 4)]
+		   		 )in{
+				nop with
+				nb_bands = 4;
+				name = "substitution"^ (Pretty.set Symbol.to_ascii symbols) ; 
+				transitions = generic_transitions
+				@ [	
+					(* Ok ! on commence : On place le terme a substituer sur la troisième bande *)
+					(init,  Run(application symbols) ,  Q 2);
+					(Q 2 , Parallel [ Run(left_most) ; Run(nop);Run(left_most);Run(nop)], Q 3);
+					(*Ok ! A partir de là, on a le terme a substituer sur la troisième bande et on est au debut de la bande 1 et 3.*)
+					(Q 3, Action( Simultaneous [ RWM (Match(OUT[L;X;O;C;S]), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), Q 3 );
+					(*Si on tombe sur un Lambda terme : le recopier sur la bande 2.*)
+					(Q 3, Action( Simultaneous [ RWM (Match(VAL L), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write,Here)]), Q 4 );
+						(*Ecrire la variable sur la bande 2*)
+						
+					(*Si en passant un Lamba terme on tombe sur une parenthèse fermante, alors pas valide. *)
+						(Q 4, Action( Simultaneous [ RWM (Match(VAL C), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), reject);
+					(*Si on a une parenthèse ouvrante, revenir à l'état où on cherche.*)
+						(Q 4, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(ANY), No_Write, Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write O, Right)]), Q 3);
+
+
+
+
+					(*Si on a une variable, alors il faut la remplacer : recopier sur la bande 4 la bande 3*)
+					(Q 3, Action( Simultaneous [ RWM (Match(VAL X), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), Q 7);
+						(Q 7, Parallel[Run(nop);Run(nop);Run(nop);Run(goto_right_blank)], Q 8);
+						(Q 8, Run(generic_copy_with_4 symbols), Q 9);
+						(Q 9, Parallel[Run(nop);Run(nop);Run(nop);Run(goto_right_blank)], Q 3);
+					
+
+					(*Si on a une parenthèse fermante.*)
+					(Q 3 , Action( Simultaneous [ RWM (Match(VAL C), No_Write , Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write C, Right)]), Q 3);
+					(*Si on a un dollar.*)
+					(Q 3, Action( Simultaneous [ RWM (Match(VAL S), No_Write , Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), No_Write, Here)]), accept);
+						
+					(* Si on a une parenthèse ouvrante : *)
+					(Q 3, Action( Simultaneous [ RWM (Match(VAL O), No_Write , Right) ; RWM (Match(ANY), No_Write, Right) ; RWM (Match(ANY), No_Write, Here) ; RWM (Match(ANY), Write O,Right)]), Q 3);
+					
+					
+				]
+	} *)
 	    
   end)
 

@@ -97,14 +97,6 @@ let (c_p: unit -> Configuration.t) = fun () ->
 	    Execution.log_run cfg
 
 
-let (c_ps: unit -> Configuration.t) = fun () ->
-      let alphabet = Alphabet.make [B;Z;U;O;S] in
-	let band1 = Band.make alphabet [O;Z;C;O;C] 
-	and band2 = Band.make alphabet [B;B;B;B;B] 
-	and band3 = Band.make alphabet [B;B;B;B;B] in 
-	  let cfg = Configuration.make Turing_Machine.c_p [ band1 ; band2 ; band3] in
-	    Execution.log_run cfg
-
 
 let (test: unit -> Configuration.t) = fun () ->
       let alphabet = Alphabet.make [B;Z;U;O;S;D;L] in
@@ -115,19 +107,23 @@ let (test: unit -> Configuration.t) = fun () ->
 	    Execution.log_run cfg
 
 let (sub: unit -> Configuration.t) = fun () ->
-      let alphabet = Alphabet.make [B;Z;U;O;S;D;L] in
-	let band1 = Band.make alphabet [O;L;X;Z;L;X;U;O;Z;U;C;C;O;X;U;U;U;C] 
-	and band2 = Band.make alphabet [B;B;B;B;B] 
-	and band3 = Band.make alphabet [B;B;B;B;B] in 
-	  let cfg = Configuration.make Turing_Machine.substitution [ band1 ; band2 ; band3] in
+      let alphabet = Alphabet.make [Z;U;O;S;L;X;C;S] in
+	let substitution = Turing_Machine.substitution alphabet.symbols in
+	let band1 = Band.make alphabet (*[O;L;X;Z;Z;O;L;X;U;Z;O;L;X;Z;U;O;X;Z;Z;X;Z;Z;C;C;C;C;O;X;U;Z;C;O;X;Z;U;C;O;X;U;U;C]*)
+	[O;L;X;Z;Z;Z;Z;O;L;X;Z;Z;Z;U;O;L;X;Z;Z;U;Z;O;X;Z;Z;U;Z;O;X;Z;Z;Z;Z;C;X;Z;Z;Z;U;C;C;C;C;O;L;X;U;U;U;U;O;Z;U;U;Z;C;C;O;X;U;U;U;Z;C;O;X;U;U;Z;Z;C]
+	and band2 = Band.make alphabet [B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B] 
+	and band3 = Band.make alphabet [B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B]
+	and band4 = Band.make alphabet [B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B;B] in 
+	  let cfg = Configuration.make substitution [ band1 ; band2 ; band3 ; band4] in
 	    Execution.log_run cfg
 
 let (app: unit -> Configuration.t) = fun () ->
-      let alphabet = Alphabet.make [B;Z;U;O;S;D;L;X] in
+      let alphabet = Alphabet.make [Z;U;O;D;L;X;C] in
+	let application = Turing_Machine.copyTerme alphabet.symbols in
 	let band1 = Band.make alphabet [O;L;X;Z;L;X;U;O;Z;U;C;C;O;X;U;U;U;C] 
 	and band2 = Band.make alphabet [B;B;B;B;B] 
 	and band3 = Band.make alphabet [B;B;B;B;B] in 
-	  let cfg = Configuration.make Turing_Machine.application [ band1 ; band2 ; band3] in
+	  let cfg = Configuration.make application [ band1 ; band2 ; band3] in
 	    Execution.log_run cfg
 
 
@@ -148,10 +144,12 @@ let (demo: unit -> unit) = fun () ->
 	    xor () ;
 	    busy_beaver Turing_Machine.bb4 ;
 	    c_p();
-		app();
+	    app();
+ 	    sub();
+	
 	    (*c_ps();*)
 	    test();	
-	    sub();
+	    
 	    
 	    
            (* 
