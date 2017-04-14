@@ -227,6 +227,136 @@ module Split =
 
 
 
+  module MiseAuPoint =
+    (struct
+
+    let change_Symbol symbol =
+        match symbol with
+        | Z -> D
+        | U -> S
+        | _ -> symbol
+
+    let rec change_Symbols lst_Source lst_Target =
+        match lst_Source with
+        | [] -> lst_Target
+        | h :: t -> change_Symbols t ((change_Symbol h)::lst_Target)
+
+
+      (* TRANSLATION OF BANDS *)
+
+      let (encode_on_one_band: Band.t -> Band.t) = fun band ->
+
+        let left = change_Symbols band.left [] in
+        let right = List.rev (change_Symbols band.right []) in
+        let head = change_Symbol band.head in
+        {
+            empty with
+            left = left ;
+            head = head ;
+            right = right ;
+            alphabet = Alphabet.make [B;D;S];
+        }
+
+      let encode: Band.t list -> Band.t list = fun bands ->
+        List.map(fun band -> encode_on_one_band band) bands
+
+
+      (* REVERSE TRANSLATION *)
+
+      let (decode_on_one_band: Band.t -> Band.t) = fun band ->
+
+        let change_Symbol_decode symbol =
+            match symbol with
+            | D -> Z
+            | S -> U
+            | _ -> symbol
+        in
+        let rec change_Symbols_decode lst_Source lst_Target =
+            match lst_Source with
+            | [] -> lst_Target
+            | h :: t -> change_Symbols_decode t ((change_Symbol_decode h)::lst_Target)
+        in
+
+        let left = change_Symbols_decode band.left [] in
+        let right = List.rev (change_Symbols_decode band.right []) in
+        let head = change_Symbol_decode band.head in
+        {
+            empty with
+            left = left ;
+            head = head ;
+            right = right ;
+            alphabet = Alphabet.make [B;D;S];
+        }
+
+
+        let decode: Band.t list -> Band.t list = fun bands ->
+            List.map(fun band -> decode_on_one_band band) bands
+
+
+      (* EMULATION OF TRANSITIONS *)
+
+      let (change_Read: reading -> reading) = fun reading ->
+
+          match reading with
+              | Match pattern -> 	  match pattern with
+                                  	  | ANY -> Match(ANY)
+                                  	  | VAL a -> Match(VAL (change_Symbol a))
+                                  	  | BUT a -> Match(BUT (change_Symbol a))
+                                  	  | IN  aS -> Match(IN (change_Symbols aS []))
+                                  	  | OUT aS -> Match(OUT (change_Symbols aS []))
+
+
+      let (change_Write: writing -> writing) = fun writing ->
+      match writing with
+      | No_Write     -> No_Write
+      | Write symbol -> Write (change_Symbol symbol)
+(**
+      let (synchronize: Action.t list -> Instruction.t) = fun actionS ->
+  	  let rec (rec_synchronize: ('r list * 'w list * 'm list) -> Action.t list -> ('r list * 'w list * 'm list)) = fun (reads,writes,moves) actions ->
+  		match actions with
+  		| [] -> (List.rev reads, List.rev writes, List.rev moves)
+  		| action::actions ->
+  			(match action with
+  			| Nop        -> rec_synchronize ( Nop::reads , Nop::writes , Nop::moves) actions
+  			| RWM(r,w,m) -> rec_synchronize ( (change_Read r)::reads , (change_Write w)::writes , m::moves) actions
+  			| Simultaneous _ -> failwith "Emulator.Split.synchronize: nested Simultaneous"
+  			)
+  	  in
+  	    let (reads,writes,moves) = rec_synchronize ([],[],[]) actionS
+  	    in
+  	      Seq[ Action(Simultaneous(reads)) ; Action(Simultaneous(writes)) ; Action(Simultaneous(moves)) ]
+**)
+      let rec (transitions_emulating: State.t * Action.t * State.t -> Transition.t list) = fun (source,action,target) ->
+  	    (match action with
+  	    | Nop -> [ (source, Action(Nop), target) ]
+
+  	    | RWM(r,w,m) -> [ (source, Action(RWM((change_Read r), (change_Write w), m)), target) ]
+
+  	    | Simultaneous actions -> [ (source, Action(Nop), target) ]
+  	    )
+
+      and (emulate_action: emulator) = fun (source,action,target) ->
+  	  let (source,target) =
+  	    if source <> target   (* /!\ loop in the emulated TM if source-target *)
+  	    then (source,target)
+  	    else (State.initial, State.accept)
+  	  in
+  	    let transitions =  transitions_emulating (source,action,target) in
+  	      { Turing_Machine.nop with
+  		name = String.concat "" [ "MiseAuPoint" ; Pretty.parentheses (Transition.to_ascii (source,Action action, target)) ] ;
+  		initial = source ;
+  		accept  = target ;
+  		transitions = transitions
+  	      }
+
+      (* THE SIMULATOR *)
+
+      let (* USER *) (simulator: simulator) = { name = "MiseAuPoint" ; encoder = encode ;  decoder = decode ; emulator = emulate_action }
+
+    end)
+
+
+
 
 module Binary =
   struct
@@ -358,7 +488,6 @@ module Binary =
         let symbols_Reading =
             match reading with
             | Match pattern -> Pattern.symbols_of pattern
-            | _ -> []
         in
         let get_Instructions_Writing encoding writing =
             match writing with
@@ -383,7 +512,56 @@ module Binary =
         let write_Instructions = get_Instructions_Writing encoding writing in
         let move_Instructions = get_Instructions_Moving encoding moving in
         ((fun (a,b,c) -> a) read_Transitions)@[(((fun (a,b,c) -> b) read_Transitions), Seq(write_Instructions@move_Instructions), State.accept)]
+(**
+    let (just_read: encoding -> State.t -> reading -> Instruction.t list) = fun encoding state_Start reading ->
+        let symbols_Reading =
+            match reading with
+            | Match pattern -> Pattern.symbols_of pattern
+            | _ -> []
+        in
+        let rec read symbols encoding state_Start state_End =
+            match symbols with
+            | [] -> ([],state_Start,state_End)
+            | h::t ->
+                let readed = just_read_symbol encoding state_Start state_End h in
+                let next_rec = read t encoding ((fun (a,b,c) -> b) readed) ((fun (a,b,c) -> c) readed) in
+                (((fun (a,b,c) -> a) readed)@((fun (a,b,c) -> a) next_rec),((fun (a,b,c) -> b) next_rec),((fun (a,b,c) -> c) next_rec))
+        in
+        ((fun (a,b,c) -> a) (read symbols_Reading encoding state_Start State.reject))
 
+
+    let (just_write: encoding -> State.t -> writing -> Instruction.t list) = fun encoding state_Start writing ->
+        let get_Instructions_Writing encoding writing =
+            match writing with
+            | No_Write     -> [Action(Nop)]
+            | Write symbol -> just_write_symbol encoding symbol
+        in
+        (get_Instructions_Writing encoding writing)
+
+    let (just_move:encoding -> State.t -> moving -> Instruction.t list) = fun encoding state_Start moving ->
+        let get_Instructions_Moving encoding moving =
+            match moving with
+            | Left -> (just_move encoding Left)@(just_move encoding Left)
+            | Here -> (just_move encoding Left)
+            | Right -> []
+        in
+        (get_Instructions_Moving encoding moving)
+
+    let (synchronize: encoding -> State.t -> Action.t list -> Instruction.t) = fun encoding state_Start actionS ->
+	  let rec (rec_synchronize: encoding -> State.t -> ('r list * 'w list * 'm list) -> Action.t list -> ('r list * 'w list * 'm list)) = fun encoding state_Start (reads,writes,moves) actions ->
+		match actions with
+		| [] -> (List.rev reads, List.rev writes, List.rev moves)
+		| action::actions ->
+			(match action with
+			| Nop        -> rec_synchronize encoding state_Start ( Nop::reads , Nop::writes , Nop::moves) actions
+			| RWM(r,w,m) -> rec_synchronize encoding state_Start ( Seq[(just_read encoding source r)]::reads , Seq[(just_write encoding source w)]::writes , Seq[(just_move encoding source m)]::moves) actions
+			| Simultaneous _ -> failwith "Emulator.Split.synchronize: nested Simultaneous"
+			)
+	  in
+	    let (reads,writes,moves) = rec_synchronize encoding state_Start ([],[],[]) actionS
+	    in
+    	      Seq[ Action(Simultaneous(reads)) ; Action(Simultaneous(writes)) ; Action(Simultaneous(moves)) ]
+**)
     let rec (emulate_action: encoding -> State.t * Action.t * State.t -> Turing_Machine.t) = fun encoding (source,action,target) ->
 
         let rec (simultaneous_Actions: encoding -> State.t -> Action.t list -> State.t -> Instruction.t list) = fun encoding source actions target ->
@@ -391,13 +569,14 @@ module Binary =
             | [] -> []
             | h::t -> (Run (emulate_action encoding (source, h, target)))::(simultaneous_Actions encoding source t target)
         in
+
         let (transitions_emulating: encoding -> State.t * Action.t * State.t -> Transition.t list) = fun encoding (source,action,target) ->
     	    (match action with
     	    | Nop -> [ (source, Action(Nop), target) ]
 
     	    | RWM(r,w,m) -> simple_action encoding source r w m
 
-    	    | Simultaneous actions -> [(source, Parallel (simultaneous_Actions encoding source actions target), target)]
+    	    | Simultaneous actions -> [ (source, Action(Nop), target) ]
     	    )
         in
 
@@ -438,8 +617,7 @@ let (demo: unit -> unit) = fun () ->
       print_string "\n\n* DEMO * Emulator.ml:\n" ;
       let alphabet = Alphabet.make [B;Z;U] in
 	  let band = Band.make alphabet [U;U;Z;U] in
-      let band2 = Band.make alphabet [Z;U;Z;Z] in
-	  let tm = Turing_Machine.generic_copy [B;Z;U;L] in
-	    let cfg = Configuration.make tm [ band; band2 ] in
-	      let _final_cfg = Simulator.log_run_using ([ (* Split.simulator ; *) Binary.make_simulator alphabet ],[]) cfg
+	  let tm = Turing_Machine.incr in
+	    let cfg = Configuration.make tm [ band ] in
+	      let _final_cfg = Simulator.log_run_using ([ (* Split.simulator ; *) MiseAuPoint.simulator],[]) cfg
 		  in ()
