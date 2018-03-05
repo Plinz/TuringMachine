@@ -22,3 +22,7 @@ _log/
 # oasis generated files
 setup.data
 setup.log
+
+# run file
+run
+
